@@ -43,18 +43,13 @@ This is a TypeScript npm package that provides AI-powered development tools for 
 
 **CLI Entry Point** (`src/cli.ts`):
 - Uses Commander.js for CLI interface
-- Two main commands: `start` (dev environment) and `setup` (project setup)
-- Default command is `start` if no subcommand provided
+- Single main command that auto-detects project type (Node.js/Python)
+- Supports pnpm, yarn, npm for Node.js projects and auto-detects Python environments
+- No separate setup command - runs development environment directly
 
 **Core Components**:
 
-1. **Project Setup** (`src/setup.ts`):
-   - Installs MCP (Model Context Protocol) API routes in Next.js app directory
-   - Creates `app/api/mcp/[transport]/route.ts` with three tools: `read_consolidated_logs`, `search_logs`, `get_browser_errors`
-   - Updates package.json with `dev:ai` script and dependencies (`mcp-handler`, `zod`)
-   - Manages .gitignore entries for `ai-dev-tools/` directory
-
-2. **Development Environment** (`src/dev-environment.ts`):
+1. **Development Environment** (`src/dev-environment.ts`):
    - Orchestrates any dev server + browser monitoring via Playwright
    - Works with any web framework (Next.js, Vite, etc.)
    - Checks port availability before starting (defaults: 3000 for app, 3684 for MCP server)
@@ -63,7 +58,24 @@ This is a TypeScript npm package that provides AI-powered development tools for 
    - Monitors console logs, network requests, page errors, navigation events
    - Takes automatic screenshots on errors and route changes
 
-**MCP Integration**: The generated route provides AI assistants with tools to analyze development logs in real-time. Tools can read recent logs, search with regex patterns, and extract browser errors from specified time periods.
+2. **CDP Monitor** (`src/cdp-monitor.ts`):
+   - Chrome DevTools Protocol monitoring implementation
+   - Captures browser events, console logs, network requests, and errors
+   - Handles screenshot capture on errors and navigation events
+   - Manages WebSocket connections to Chrome debugging interface
+
+3. **Log Parsing Services** (`src/services/`):
+   - **Error Detectors**: Framework-specific error detection (Next.js, base patterns)
+   - **Log Parsers**: Standard log parsing and output processing
+   - **Output Processor**: Centralized log formatting and timestamp management
+
+4. **MCP Server** (`mcp-server/`):
+   - Standalone Next.js application providing MCP (Model Context Protocol) integration
+   - Located at `mcp-server/app/api/mcp/[transport]/route.ts`
+   - Provides `debug_my_app` tool for comprehensive debugging with multiple modes
+   - Tools analyze development logs, detect errors, and provide fix recommendations
+
+**MCP Integration**: The separate MCP server provides AI assistants with advanced debugging tools that analyze development logs in real-time, detect errors across multiple frameworks, and provide step-by-step fix guidance.
 
 **Log Format**: Unified timestamps with source prefixes:
 ```
@@ -71,4 +83,4 @@ This is a TypeScript npm package that provides AI-powered development tools for 
 [2025-08-30T12:54:03.435Z] [BROWSER] [CONSOLE LOG] App initialized
 ```
 
-**Target Use Case**: Designed for Next.js 13+ projects with app directory structure. The tool creates isolated browser profiles and consolidated logging to enable AI-assisted debugging and development workflow analysis.
+**Target Use Case**: Universal development tool that works with any web framework (Next.js, Vite, Python web apps, etc.). Auto-detects project type and package manager. Creates isolated browser profiles and consolidated logging to enable AI-assisted debugging and development workflow analysis.
