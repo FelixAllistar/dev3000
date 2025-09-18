@@ -903,15 +903,36 @@ export class DevEnvironment {
     const killPortProcess = async (port: string, name: string) => {
       try {
         const { spawn } = await import("child_process")
-        const killProcess = spawn("sh", ["-c", `lsof -ti:${port} | xargs kill -9`], { stdio: "inherit" })
-        return new Promise<void>((resolve) => {
-          killProcess.on("exit", (code) => {
-            if (code === 0) {
-              console.log(chalk.green(`✅ Killed ${name} on port ${port}`))
-            }
-            resolve()
+
+        // First get PIDs using lsof
+        const pids = await new Promise<string[]>((resolve) => {
+          const proc = spawn("lsof", ["-ti", `:${port}`], { stdio: "pipe" })
+          let output = ""
+          proc.stdout?.on("data", (data) => {
+            output += data.toString()
+          })
+          proc.on("exit", () => {
+            const pidList = output
+              .trim()
+              .split("\n")
+              .filter((pid) => pid.length > 0)
+            resolve(pidList)
           })
         })
+
+        // Kill each PID individually
+        if (pids.length > 0) {
+          await Promise.all(
+            pids.map(
+              (pid) =>
+                new Promise<void>((resolve) => {
+                  const killProcess = spawn("kill", ["-9", pid], { stdio: "inherit" })
+                  killProcess.on("exit", () => resolve())
+                })
+            )
+          )
+          console.log(chalk.green(`✅ Killed ${name} on port ${port}`))
+        }
       } catch (_error) {
         console.log(chalk.gray(`⚠️ Could not kill ${name} on port ${port}`))
       }
@@ -919,6 +940,41 @@ export class DevEnvironment {
 
     // Kill servers
     console.log(chalk.cyan("🔄 Killing servers..."))
+
+    // First kill tracked processes directly (kill entire process groups)
+    if (this.serverProcess && !this.serverProcess.killed && this.serverProcess.pid) {
+      try {
+        // Kill the entire process group since detached: true was used
+        process.kill(-this.serverProcess.pid, "SIGKILL")
+        console.log(chalk.green("✅ Killed your app server process group"))
+      } catch (_error) {
+        // Fallback to killing just the parent process
+        try {
+          this.serverProcess.kill("SIGKILL")
+          console.log(chalk.green("✅ Killed your app server process"))
+        } catch (_fallbackError) {
+          console.log(chalk.gray("⚠️ Could not kill app server process"))
+        }
+      }
+    }
+
+    if (this.mcpServerProcess && !this.mcpServerProcess.killed && this.mcpServerProcess.pid) {
+      try {
+        // Kill the entire process group since detached: true was used
+        process.kill(-this.mcpServerProcess.pid, "SIGKILL")
+        console.log(chalk.green(`✅ Killed ${this.options.commandName} MCP server process group`))
+      } catch (_error) {
+        // Fallback to killing just the parent process
+        try {
+          this.mcpServerProcess.kill("SIGKILL")
+          console.log(chalk.green(`✅ Killed ${this.options.commandName} MCP server process`))
+        } catch (_fallbackError) {
+          console.log(chalk.gray("⚠️ Could not kill MCP server process"))
+        }
+      }
+    }
+
+    // Also kill any processes on the ports as backup
     await Promise.all([
       killPortProcess(this.options.port, "your app server"),
       killPortProcess(this.options.mcpPort, `${this.options.commandName} MCP server`)
@@ -959,15 +1015,36 @@ export class DevEnvironment {
       const killPortProcess = async (port: string, name: string) => {
         try {
           const { spawn } = await import("child_process")
-          const killProcess = spawn("sh", ["-c", `lsof -ti:${port} | xargs kill -9`], { stdio: "inherit" })
-          return new Promise<void>((resolve) => {
-            killProcess.on("exit", (code) => {
-              if (code === 0) {
-                console.log(chalk.green(`✅ Killed ${name} on port ${port}`))
-              }
-              resolve()
+
+          // First get PIDs using lsof
+          const pids = await new Promise<string[]>((resolve) => {
+            const proc = spawn("lsof", ["-ti", `:${port}`], { stdio: "pipe" })
+            let output = ""
+            proc.stdout?.on("data", (data) => {
+              output += data.toString()
+            })
+            proc.on("exit", () => {
+              const pidList = output
+                .trim()
+                .split("\n")
+                .filter((pid) => pid.length > 0)
+              resolve(pidList)
             })
           })
+
+          // Kill each PID individually
+          if (pids.length > 0) {
+            await Promise.all(
+              pids.map(
+                (pid) =>
+                  new Promise<void>((resolve) => {
+                    const killProcess = spawn("kill", ["-9", pid], { stdio: "inherit" })
+                    killProcess.on("exit", () => resolve())
+                  })
+              )
+            )
+            console.log(chalk.green(`✅ Killed ${name} on port ${port}`))
+          }
         } catch (_error) {
           console.log(chalk.gray(`⚠️ Could not kill ${name} on port ${port}`))
         }
@@ -975,6 +1052,41 @@ export class DevEnvironment {
 
       // Kill servers immediately - don't wait for browser cleanup
       console.log(chalk.yellow("🔄 Killing servers..."))
+
+      // First kill tracked processes directly (kill entire process groups)
+      if (this.serverProcess && !this.serverProcess.killed && this.serverProcess.pid) {
+        try {
+          // Kill the entire process group since detached: true was used
+          process.kill(-this.serverProcess.pid, "SIGKILL")
+          console.log(chalk.green("✅ Killed your app server process group"))
+        } catch (_error) {
+          // Fallback to killing just the parent process
+          try {
+            this.serverProcess.kill("SIGKILL")
+            console.log(chalk.green("✅ Killed your app server process"))
+          } catch (_fallbackError) {
+            console.log(chalk.gray("⚠️ Could not kill app server process"))
+          }
+        }
+      }
+
+      if (this.mcpServerProcess && !this.mcpServerProcess.killed && this.mcpServerProcess.pid) {
+        try {
+          // Kill the entire process group since detached: true was used
+          process.kill(-this.mcpServerProcess.pid, "SIGKILL")
+          console.log(chalk.green(`✅ Killed ${this.options.commandName} MCP server process group`))
+        } catch (_error) {
+          // Fallback to killing just the parent process
+          try {
+            this.mcpServerProcess.kill("SIGKILL")
+            console.log(chalk.green(`✅ Killed ${this.options.commandName} MCP server process`))
+          } catch (_fallbackError) {
+            console.log(chalk.gray("⚠️ Could not kill MCP server process"))
+          }
+        }
+      }
+
+      // Also kill any processes on the ports as backup
       await Promise.all([
         killPortProcess(this.options.port, "your app server"),
         killPortProcess(this.options.mcpPort, `${this.options.commandName} MCP server`)
