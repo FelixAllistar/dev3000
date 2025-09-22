@@ -68,6 +68,18 @@ async function detectProjectType(debug = false): Promise<ProjectConfig> {
     }
   }
 
+  if (existsSync("bun.lockb")) {
+    if (debug) {
+      console.log(`[PROJECT DEBUG] Bun project detected (found bun.lockb)`)
+    }
+    return {
+      type: "node",
+      packageManager: "bun",
+      defaultScript: "dev",
+      defaultPort: "3000"
+    }
+  }
+
   // Check for Node.js project using package-manager-detector
   const detected = await detect()
 

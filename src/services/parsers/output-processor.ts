@@ -40,13 +40,16 @@ export class OutputProcessor {
       // For error output, check if it's critical
       const isCritical = isError && this.errorDetector.isCritical(line.message)
 
+      // Check if this looks like a command echo (e.g., from package managers like npm/bun)
+      const isCommandEcho = /^\s*\$?\s*(next|npm|bun|yarn|pnpm)\s+(dev|start|build|run)\b/i.test(line.message)
+
       // Build the log entry
       const entry: LogEntry = {
-        formatted: isError ? `ERROR: ${line.formatted}` : line.formatted
+        formatted: isError && !isCommandEcho ? `ERROR: ${line.formatted}` : line.formatted
       }
 
-      // Add critical error information if applicable
-      if (isCritical) {
+      // Add critical error information if applicable (skip for command echoes)
+      if (isCritical && !isCommandEcho) {
         entry.isCritical = true
         entry.rawMessage = line.message
       }
