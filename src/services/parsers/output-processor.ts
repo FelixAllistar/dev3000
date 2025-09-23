@@ -40,16 +40,19 @@ export class OutputProcessor {
       // For error output, check if it's critical
       const isCritical = isError && this.errorDetector.isCritical(line.message)
 
-      // Check if this looks like a command echo (e.g., from package managers like npm/bun)
-      const isCommandEcho = /^\s*\$?\s*(next|npm|bun|yarn|pnpm)\s+(dev|start|build|run)\b/i.test(line.message)
+      // Check if this looks like a command echo or Bun build output (e.g., from package managers like npm/bun)
+      const isCommandEchoOrBunOutput =
+        /^\s*\$?\s*(next|npm|bun|yarn|pnpm)\b.*(dev|start|build|run|--hot|Bundled page)/i.test(line.message) ||
+        /bun\s+(?:--bun|run|dev|hot)/i.test(line.message) ||
+        /Bundled page|Server running at/i.test(line.message)
 
       // Build the log entry
       const entry: LogEntry = {
-        formatted: isError && !isCommandEcho ? `ERROR: ${line.formatted}` : line.formatted
+        formatted: isError && !isCommandEchoOrBunOutput ? `ERROR: ${line.formatted}` : line.formatted
       }
 
       // Add critical error information if applicable (skip for command echoes)
-      if (isCritical && !isCommandEcho) {
+      if (isCritical && !isCommandEchoOrBunOutput) {
         entry.isCritical = true
         entry.rawMessage = line.message
       }

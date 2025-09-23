@@ -68,9 +68,9 @@ async function detectProjectType(debug = false): Promise<ProjectConfig> {
     }
   }
 
-  if (existsSync("bun.lockb")) {
+  if (existsSync("bun.lockb") || existsSync("bun.lock")) {
     if (debug) {
-      console.log(`[PROJECT DEBUG] Bun project detected (found bun.lockb)`)
+      console.log(`[PROJECT DEBUG] Bun project detected (found bun.lock${existsSync("bun.lockb") ? "b" : "b"})`)
     }
     return {
       type: "node",
